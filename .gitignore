@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# C++ / CMake
+build/
+*.so
+*.o
+*.dylib
+.DS_Store
+
+# IDE
+.vscode/
+
