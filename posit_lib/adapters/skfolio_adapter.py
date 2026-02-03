@@ -73,6 +73,44 @@ class PositMeanVariance:
         self.weights_ = None
         self._solver = None
         
+    def _compute_scaling_factor(self, X):
+        """
+        Calcula el factor de escala según self.scaling_type y los datos X.
+        """
+        if self.scaling_type == 'none':
+            return 1.0
+            
+        if self.scaling_type == 'manual':
+            return self.scaling_factor
+            
+        vals = np.abs(X)
+        if np.max(vals) == 0:
+            return 1.0
+            
+        if self.scaling_type in ['max', 'auto_max_abs']:
+            return 1.0 / np.max(vals)
+            
+        elif self.scaling_type == 'std':
+            sigma = np.std(vals)
+            return 1.0 / sigma if sigma > 0 else 1.0
+            
+        elif self.scaling_type == 'frobenius':
+            # Norma Frobenius de la matriz X
+            norm = np.linalg.norm(vals) 
+            return 1.0 / norm if norm > 0 else 1.0
+            
+        elif self.scaling_type == 'pow2':
+            # Potencia de 2 más cercana a 1/mean(vals)
+            # Útil para escalar binariamente sin perder precisión en mantisa (excepto exponente)
+            avg = np.mean(vals)
+            if avg > 0:
+                target = 1.0 / avg
+                k = np.round(np.log2(target))
+                return 2.0 ** k
+            return 1.0
+            
+        return 1.0
+
     def fit(self, X, y=None):
         """
         Ajusta el modelo usando aritmética Posit o Float.
@@ -80,14 +118,8 @@ class PositMeanVariance:
         # 1. Convertir entrada a array numpy si es necesario
         X = np.array(X)
         
-        # 2. Lógica de Escalado
-        scale = 1.0
-        if self.scaling_type == 'manual':
-            scale = self.scaling_factor
-        elif self.scaling_type == 'auto_max_abs':
-            max_val = np.max(np.abs(X))
-            if max_val > 0:
-                scale = 1.0 / max_val
+        # 2. Lógica de Escalado 
+        scale = self._compute_scaling_factor(X)
         
         X_scaled = X * scale
         
@@ -131,10 +163,50 @@ class PositMeanVariance:
         # Inicializar Solver Genérico con el tipo inyectado
         solver = PGDSolver(self.number_type)
         
-        # Ajuste Automático de Learning Rate por Escala
-        # Si X aumenta k, Grad ~ k^2 * w. Necesitamos reducir lr en 1/k^2
-        adjusted_lr = self.learning_rate / (scale ** 2)
+        # Ajuste de Parámetros según Escala y Función Objetivo
+        # 1. Ajuste de Learning Rate
+        #    - Quadratic (Risk): Grad ~ S^2. LR ~ 1/S^2.
+        #    - Linear (Return) or Mixed (Utility with Gamma adj): Grad ~ S. LR ~ 1/S.
         
+        adjusted_lr = self.learning_rate
+        adjusted_gamma = self.risk_aversion
+
+        if self.objective_function == 'MINIMIZE_RISK':
+            # Solo término cuadrático: wT (S^2 Cov) w
+            # Gradiente escala por S^2
+            adjusted_lr = self.learning_rate / (scale ** 2)
+            
+        elif self.objective_function == 'MAXIMIZE_RETURN':
+            # Solo término lineal: (S mu)T w
+            # Gradiente escala por S
+            adjusted_lr = self.learning_rate / scale
+            
+        elif self.objective_function == 'MAXIMIZE_UTILITY':
+            # Maximize: (S mu)T w - (gamma/2) wT (S^2 Cov) w
+            # Para equivalencia, factorizamos S: S * [ muT w - (gamma*S / 2) wT Cov w ]
+            # Entonces la "Gamma efectiva" debe ser gamma / S para recuperar proporción original.
+            # Sin embargo, pasamos 'gamma' directo al solver.
+            # Solver calcula: Grad = (S mu) - gamma * (S^2 Cov) w
+            # Queremos: Grad = S * (mu - gamma_original * Cov * w)
+            # => S*mu - gamma * S^2 * Cov * w = S*mu - S * gamma_original * Cov * w
+            # => gamma * S = gamma_original
+            # => gamma = gamma_original / S
+            
+            adjusted_gamma = self.risk_aversion / scale
+            
+            # Con esta gamma ajustada, Grad total escala por S.
+            # LR debe contrarrestar S.
+            adjusted_lr = self.learning_rate / scale
+            
+        elif self.objective_function == 'MAXIMIZE_RATIO':
+            # Ratio es invariante a escala uniforme de mu y cov?
+            # (S mu) / sqrt(S^2 var) = S/S = 1.
+            # El valor del objetivo no cambia. El gradiente?
+            # Es complejo, pero generalmente Ratio ~ O(1).
+            # Asumamos LR estándar o scaling simple?
+            # Por seguridad, usaremos scaling lineal conservador.
+            adjusted_lr = self.learning_rate / scale
+
         # Despachar llamadas específicas a solve()
         # NOTA: PGDSolver.solve ahora toma argumentos explícitos, no kwargs para todo.
         
@@ -165,7 +237,7 @@ class PositMeanVariance:
             objective_type=self.objective_function,
             cov_matrix=cov_arg,
             expected_returns=mu_arg,
-            risk_aversion=self.risk_aversion,
+            risk_aversion=adjusted_gamma,
             max_iterations=self.max_iterations,
             learning_rate=adjusted_lr,
             tolerance=self.tolerance,
