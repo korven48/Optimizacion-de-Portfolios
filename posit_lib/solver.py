@@ -4,7 +4,7 @@ Solver Genérico Robusto para Optimización de Portafolios
 
 Este módulo implementa una clase PGDSolver reutilizable que utiliza
 Descenso de Gradiente Proyectado (PGD) para resolver problemas de optimización.
-Es genérico y puede trabajar con tipos Posit o Floats estándar (vía FloatWrapper).
+Es genérico y puede trabajar con tipos Posit o Floats estándar (vía Float64Wrapper).
 """
 
 import sys
@@ -12,21 +12,20 @@ import os
 
 # Importar la extensión C++ desde el paquete actual
 from . import posit as posit
-from .float_wrapper import FloatWrapper
+from .float_wrapper import Float64Wrapper
 import math
 
 class PGDSolver:
     """
     Solver de Descenso de Gradiente Proyectado para Optimización de Portafolios.
-    Implementación genérica que puede ejecutarse en tipos Posit o FloatWrapper.
+    Implementación genérica que puede ejecutarse en tipos Posit o Float64Wrapper.
     """
     def __init__(self, number_type):
         """
-        Inicializa el solver con una clase de tipo numérico específica.
+        Inicializa el solver con un tipo numérico específico.
         
         Args:
-            number_type: Una clase (ej. posit.Posit64 o FloatWrapper) que implementa
-                         operadores aritméticos y sqrt().
+            number_type: Un posit.PositXX o FloatXXWrapper.
         """
         self.number_type = number_type
         self.zero = self.number_type(0.0)
@@ -135,21 +134,6 @@ class PGDSolver:
                 grad.append(two * val)
                 
         elif objective_type == 'MAXIMIZE_RETURN':
-            # Gradiente de w^T * mu es mu
-            # Pero como minimizamos -f(w), el gradiente es -mu.
-            # O si maximizamos directamente (ascenso de gradiente), es mu.
-            # Aquí asumimos que el solver maneja la dirección (ascenso/descenso).
-            # Retornamos el gradiente de la función tal cual.
-            # Si es MAXIMIZE_RETURN, grad = mu.
-            # Pero en _setup_problem_data calculamos _grad_const_p = -mu?
-            # Revisemos solve loop:
-            # if objective_type in ['MAXIMIZE_RETURN', ...]: w_new.append(w[j] + step)
-            # Entonces necesitamos el gradiente positivo (mu).
-            
-            # Si _grad_const_p es -mu, entonces debemos devolver -_grad_const_p o cambiar _setup.
-            # En _setup puse: self._grad_const_p = [-val for val in self._mu_p]
-            # Eso parece incorrecto si hacemos ascenso.
-            # Vamos a usar self._mu_p directamente.
             grad = [val for val in self._mu_p]
             
         elif objective_type == 'MAXIMIZE_UTILITY':
@@ -243,11 +227,17 @@ class PGDSolver:
         for i in range(max_iterations):
             grad = self._compute_gradient(w, objective_type)
             
-            # Callback de monitoreo
+            # Check for zero gradient (Underflow prevention or Stationary point)
+            # If gradient is exactly zero, we cannot improve further using gradient descent.
+            
             if callback:
                 w_float = [float(val) for val in w]
                 grad_float = [float(val) for val in grad]
                 callback(w_float, grad_float, i)
+
+            is_zero_gradient = all(g == self.zero for g in grad)
+            if is_zero_gradient:
+                return w, i + 1
             
             # Actualización con Momentum
             # v_{t+1} = mu * v_t + grad

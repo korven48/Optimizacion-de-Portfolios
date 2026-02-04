@@ -8,25 +8,25 @@
 namespace py = pybind11;
 using namespace sw::universal;
 
-// Template wrapper for different posit configurations
+// Wrapper de plantilla para diferentes configuraciones de posit
 template<size_t nbits, size_t es>
 class PositWrapper {
 private:
     posit<nbits, es> value;
 
 public:
-    // Constructors
+    // Constructores
     PositWrapper() : value(0) {}
     PositWrapper(double d) : value(d) {}
     PositWrapper(int i) : value(i) {}
     PositWrapper(const posit<nbits, es>& p) : value(p) {}
     
-    // Conversion to double
+    // Conversión a double
     double to_double() const {
         return double(value);
     }
     
-    // Arithmetic operators
+    // Operadores aritméticos
     PositWrapper operator+(const PositWrapper& other) const {
         return PositWrapper(value + other.value);
     }
@@ -51,7 +51,7 @@ public:
         return *this;
     }
     
-    // Comparison operators
+    // Operadores de comparación
     bool operator==(const PositWrapper& other) const {
         return value == other.value;
     }
@@ -76,7 +76,7 @@ public:
         return value >= other.value;
     }
     
-    // String representation
+    // Representación en cadena
     std::string repr() const {
         std::ostringstream oss;
         oss << "Posit" << nbits << "<" << es << ">(" << double(value) << ")";
@@ -89,7 +89,7 @@ public:
         return oss.str();
     }
     
-    // Mathematical functions
+    // Funciones matemáticas
     PositWrapper sqrt_() const {
         return PositWrapper(sw::universal::sqrt(value));
     }
@@ -111,9 +111,9 @@ public:
     }
 };
 
-// Module definition
+// Definición del módulo
 PYBIND11_MODULE(posit, m) {
-    m.doc() = "Posit arithmetic wrapper for portfolio optimization";
+    m.doc() = "Wrapper aritmético de Posit para optimización de portafolios";
     
     // Posit8<2>
     py::class_<PositWrapper<8, 2>>(m, "Posit8")
@@ -135,11 +135,11 @@ PYBIND11_MODULE(posit, m) {
         .def(py::self > py::self)
         .def(py::self <= py::self)
         .def(py::self >= py::self)
-        .def("sqrt", &PositWrapper<8, 2>::sqrt_, "Square root")
-        .def("exp", &PositWrapper<8, 2>::exp_, "Exponential")
-        .def("log", &PositWrapper<8, 2>::log_, "Natural logarithm")
-        .def("abs", &PositWrapper<8, 2>::abs_, "Absolute value")
-        .def("pow", &PositWrapper<8, 2>::pow_, "Power")
+        .def("sqrt", &PositWrapper<8, 2>::sqrt_, "Raíz cuadrada")
+        .def("exp", &PositWrapper<8, 2>::exp_, "Exponencial")
+        .def("log", &PositWrapper<8, 2>::log_, "Logaritmo natural")
+        .def("abs", &PositWrapper<8, 2>::abs_, "Valor absoluto")
+        .def("pow", &PositWrapper<8, 2>::pow_, "Potencia")
         .def("__pow__", &PositWrapper<8, 2>::pow_);
 
     // Posit16<2>
@@ -162,14 +162,14 @@ PYBIND11_MODULE(posit, m) {
         .def(py::self > py::self)
         .def(py::self <= py::self)
         .def(py::self >= py::self)
-        .def("sqrt", &PositWrapper<16, 2>::sqrt_, "Square root")
-        .def("exp", &PositWrapper<16, 2>::exp_, "Exponential")
-        .def("log", &PositWrapper<16, 2>::log_, "Natural logarithm")
-        .def("abs", &PositWrapper<16, 2>::abs_, "Absolute value")
-        .def("pow", &PositWrapper<16, 2>::pow_, "Power")
+        .def("sqrt", &PositWrapper<16, 2>::sqrt_, "Raíz cuadrada")
+        .def("exp", &PositWrapper<16, 2>::exp_, "Exponencial")
+        .def("log", &PositWrapper<16, 2>::log_, "Logaritmo natural")
+        .def("abs", &PositWrapper<16, 2>::abs_, "Valor absoluto")
+        .def("pow", &PositWrapper<16, 2>::pow_, "Potencia")
         .def("__pow__", &PositWrapper<16, 2>::pow_);
 
-    // Posit32<2> - Standard configuration
+    // Posit32<2> - Configuración estándar
     py::class_<PositWrapper<32, 2>>(m, "Posit32")
         .def(py::init<>())
         .def(py::init<double>())
@@ -189,14 +189,14 @@ PYBIND11_MODULE(posit, m) {
         .def(py::self > py::self)
         .def(py::self <= py::self)
         .def(py::self >= py::self)
-        .def("sqrt", &PositWrapper<32, 2>::sqrt_, "Square root")
-        .def("exp", &PositWrapper<32, 2>::exp_, "Exponential")
-        .def("log", &PositWrapper<32, 2>::log_, "Natural logarithm")
-        .def("abs", &PositWrapper<32, 2>::abs_, "Absolute value")
-        .def("pow", &PositWrapper<32, 2>::pow_, "Power")
+        .def("sqrt", &PositWrapper<32, 2>::sqrt_, "Raíz cuadrada")
+        .def("exp", &PositWrapper<32, 2>::exp_, "Exponencial")
+        .def("log", &PositWrapper<32, 2>::log_, "Logaritmo natural")
+        .def("abs", &PositWrapper<32, 2>::abs_, "Valor absoluto")
+        .def("pow", &PositWrapper<32, 2>::pow_, "Potencia")
         .def("__pow__", &PositWrapper<32, 2>::pow_);
     
-    // Posit64<2> - High precision configuration
+    // Posit64<2> - Configuración de alta precisión
     py::class_<PositWrapper<64, 2>>(m, "Posit64")
         .def(py::init<>())
         .def(py::init<double>())
@@ -216,16 +216,16 @@ PYBIND11_MODULE(posit, m) {
         .def(py::self > py::self)
         .def(py::self <= py::self)
         .def(py::self >= py::self)
-        .def("sqrt", &PositWrapper<64, 2>::sqrt_, "Square root")
-        .def("exp", &PositWrapper<64, 2>::exp_, "Exponential")
-        .def("log", &PositWrapper<64, 2>::log_, "Natural logarithm")
-        .def("abs", &PositWrapper<64, 2>::abs_, "Absolute value")
-        .def("pow", &PositWrapper<64, 2>::pow_, "Power")
+        .def("sqrt", &PositWrapper<64, 2>::sqrt_, "Raíz cuadrada")
+        .def("exp", &PositWrapper<64, 2>::exp_, "Exponencial")
+        .def("log", &PositWrapper<64, 2>::log_, "Logaritmo natural")
+        .def("abs", &PositWrapper<64, 2>::abs_, "Valor absoluto")
+        .def("pow", &PositWrapper<64, 2>::pow_, "Potencia")
         .def("__pow__", &PositWrapper<64, 2>::pow_);
     
-    // Module-level functions
-    m.def("sqrt", [](const PositWrapper<8, 2>& p) { return p.sqrt_(); }, "Square root (Posit8)");
-    m.def("sqrt", [](const PositWrapper<16, 2>& p) { return p.sqrt_(); }, "Square root (Posit16)");
-    m.def("sqrt", [](const PositWrapper<32, 2>& p) { return p.sqrt_(); }, "Square root (Posit32)");
-    m.def("sqrt", [](const PositWrapper<64, 2>& p) { return p.sqrt_(); }, "Square root (Posit64)");
+    // Funciones a nivel de módulo
+    m.def("sqrt", [](const PositWrapper<8, 2>& p) { return p.sqrt_(); }, "Raíz cuadrada (Posit8)");
+    m.def("sqrt", [](const PositWrapper<16, 2>& p) { return p.sqrt_(); }, "Raíz cuadrada (Posit16)");
+    m.def("sqrt", [](const PositWrapper<32, 2>& p) { return p.sqrt_(); }, "Raíz cuadrada (Posit32)");
+    m.def("sqrt", [](const PositWrapper<64, 2>& p) { return p.sqrt_(); }, "Raíz cuadrada (Posit64)");
 }

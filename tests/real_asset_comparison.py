@@ -8,9 +8,9 @@ import numpy as np
 # Añadir directorio padre al path para encontrar posit_lib y ejemplos
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from examples.custom_comparison import run_comparison
+from tests.custom_comparison import run_comparison
 
-def load_real_data():
+def load_real_data(start="2018-01-01", end="2026-01-01", interval="1mo"):
     assets_map = {
         'GLD': 'Oro',
         'BTC-USD': 'Bitcoin',
@@ -26,7 +26,7 @@ def load_real_data():
     tickers = list(assets_map.keys())
     
     print(f"Descargando datos para {len(tickers)} activos...")
-    raw_data = yf.download(tickers, start="2018-01-01", end="2026-01-01", progress=False, auto_adjust=True, interval="1mo")
+    raw_data = yf.download(tickers, start=start, end=end, progress=False, auto_adjust=True, interval=interval)
     
     if 'Close' in raw_data:
         data = raw_data['Close']
@@ -53,14 +53,38 @@ def load_real_data():
 
 if __name__ == "__main__":
     try:
+        print("========== Primer test: datos mensuales ==========")
         X, assets = load_real_data()
         
         # Estrategias originales
         strategies = [
-            ('none', 1.0)
+            # ('max', 1.0),
+            ('std', 1.0)
+            # ('frobenius', 1.0),
+            # ('pow2', 1.0),
+            # ('none', 1.0)
         ]
         
         run_comparison(X, asset_names=assets, scaling_strategies=strategies)
+
+        print("========== Segundo test: datos diarios ==========")
+        X, assets = load_real_data(start="2018-01-01", end="2026-01-01", interval="1d")
         
+        # Estrategias originales
+        strategies = [
+            ('std', 1.0)
+        ]
+        
+        run_comparison(X, asset_names=assets, scaling_strategies=strategies)
+
+        # print("========== Tercer test: datos anuales ==========")
+        # X, assets = load_real_data(start="2018-01-01", end="2026-01-01", interval="3mo")
+        
+        # # Estrategias originales
+        # strategies = [
+        #     ('std', 1.0)
+        # ]
+        
+        # run_comparison(X, asset_names=assets, scaling_strategies=strategies)
     except Exception as e:
         print(f"Error fatal: {e}")

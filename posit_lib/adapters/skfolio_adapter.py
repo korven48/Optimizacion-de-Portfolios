@@ -18,23 +18,6 @@ from posit_lib.solver import PGDSolver
 class PositMeanVariance:
     """
     Estimador de Optimización Media-Varianza usando Aritmética Posit Pura.
-    
-    Parámetros
-    ----------
-    risk_aversion : float, default=1.0
-        Coeficiente de aversión al riesgo. Valores más altos minimizan la varianza más agresivamente.
-    
-    objective_function : str, default='MINIMIZE_RISK'
-        Función objetivo a optimizar. Opciones: 'MINIMIZE_RISK', 'MAXIMIZE_RETURN', 'MAXIMIZE_UTILITY', 'MAXIMIZE_RATIO'.
-        
-    number_type : class, default=None
-        Clase del tipo numérico a usar para los cálculos (ej. posit.Posit64). 
-        Si es None, se usa posit.Posit64 por defecto.
-        
-    Atributos
-    ----------
-    weights_ : ndarray de forma (n_assets,)
-        Pesos del portafolio óptimo.
     """
     def __init__(self, 
                  risk_aversion=1.0, 
@@ -42,7 +25,7 @@ class PositMeanVariance:
                  number_type=None, 
                  scaling_type='none', 
                  scaling_factor=1.0,
-                 max_iterations=1000,
+                 max_iterations=10000,
                  tolerance=1e-6,
                  momentum=0.9,
                  learning_rate=0.1):
@@ -50,7 +33,7 @@ class PositMeanVariance:
         Args:
             risk_aversion: Parámetro de aversión al riesgo (gamma).
             objective_function: 'MINIMIZE_RISK', 'MAXIMIZE_RETURN', 'MAXIMIZE_UTILITY', 'MAXIMIZE_RATIO'
-            number_type: Clase numérica a usar (ej. posit.Posit64, FloatWrapper). Por defecto usa Posit64.
+            number_type: Clase numérica a usar (ej. posit.Posit64, Float64Wrapper). Por defecto usa Posit64.
             scaling_type: 'none', 'manual', 'auto_max_abs'. Estrategia de escalado de datos.
             scaling_factor: Factor de escalado manual (usado si scaling_type='manual').
             max_iterations: Número máximo de iteraciones para el solver.
@@ -111,63 +94,10 @@ class PositMeanVariance:
             
         return 1.0
 
-    def fit(self, X, y=None):
+    def _adjust_solver_params(self, scale):
         """
-        Ajusta el modelo usando aritmética Posit o Float.
+        Ajusta los parámetros del solver (learning_rate, risk_aversion) según la escala y función objetivo.
         """
-        # 1. Convertir entrada a array numpy si es necesario
-        X = np.array(X)
-        
-        # 2. Lógica de Escalado 
-        scale = self._compute_scaling_factor(X)
-        
-        X_scaled = X * scale
-        
-        n_samples, n_assets = X_scaled.shape
-        
-        # Calcular Mu y Cov
-        # Si number_type es FloatWrapper, usamos numpy por velocidad.
-        # Si es Posit, usamos la implementación en posit_lib.statistics para pureza.
-        
-        if self.number_type.__name__ == "FloatWrapper":
-            mu = np.mean(X_scaled, axis=0)
-            cov = np.cov(X_scaled, rowvar=False)
-            # Convertir a listas para consistencia con lo que espera el solver si usara Posits
-            # (aunque el solver maneja arrays numpy si son floats)
-        else:
-            print(f"Calculando estadísticas con {self.number_type.__name__} (esto puede tardar)...")
-            from posit_lib.statistics import compute_mean, compute_covariance
-            
-            # Calcular media
-            mu_posit = compute_mean(X_scaled, self.number_type)
-            # Convertir a lista de floats para pasar a kwargs si es necesario, 
-            # OJO: El solver espera listas de objetos number_type o floats?
-            # El solver convierte internamente: self.number_type(val).
-            # Si pasamos objetos Posit, el constructor de PositWrapper debe aceptar PositWrapper (copy constructor).
-            # Asumamos que el wrapper tiene constructor de copia o que pasamos floats.
-            
-            # Para máxima precisión, deberíamos pasar los objetos Posit directamente al solver.
-            # Pero PGDSolver.__init__ no recibe datos. solve() recibe kwargs.
-            # solve() usa: expected_returns = [self.number_type(x) for x in kwargs['expected_returns']]
-            # Si x ya es number_type, esto debe funcionar.
-            
-            mu = mu_posit
-            
-            # Calcular covarianza
-            if self.objective_function in ['MINIMIZE_RISK', 'MAXIMIZE_UTILITY', 'MAXIMIZE_RATIO']:
-                cov_posit = compute_covariance(X_scaled, mu_posit, self.number_type)
-                cov = cov_posit
-            else:
-                cov = None # No se necesita
-        
-        # Inicializar Solver Genérico con el tipo inyectado
-        solver = PGDSolver(self.number_type)
-        
-        # Ajuste de Parámetros según Escala y Función Objetivo
-        # 1. Ajuste de Learning Rate
-        #    - Quadratic (Risk): Grad ~ S^2. LR ~ 1/S^2.
-        #    - Linear (Return) or Mixed (Utility with Gamma adj): Grad ~ S. LR ~ 1/S.
-        
         adjusted_lr = self.learning_rate
         adjusted_gamma = self.risk_aversion
 
@@ -185,12 +115,6 @@ class PositMeanVariance:
             # Maximize: (S mu)T w - (gamma/2) wT (S^2 Cov) w
             # Para equivalencia, factorizamos S: S * [ muT w - (gamma*S / 2) wT Cov w ]
             # Entonces la "Gamma efectiva" debe ser gamma / S para recuperar proporción original.
-            # Sin embargo, pasamos 'gamma' directo al solver.
-            # Solver calcula: Grad = (S mu) - gamma * (S^2 Cov) w
-            # Queremos: Grad = S * (mu - gamma_original * Cov * w)
-            # => S*mu - gamma * S^2 * Cov * w = S*mu - S * gamma_original * Cov * w
-            # => gamma * S = gamma_original
-            # => gamma = gamma_original / S
             
             adjusted_gamma = self.risk_aversion / scale
             
@@ -199,44 +123,60 @@ class PositMeanVariance:
             adjusted_lr = self.learning_rate / scale
             
         elif self.objective_function == 'MAXIMIZE_RATIO':
-            # Ratio es invariante a escala uniforme de mu y cov?
-            # (S mu) / sqrt(S^2 var) = S/S = 1.
-            # El valor del objetivo no cambia. El gradiente?
-            # Es complejo, pero generalmente Ratio ~ O(1).
-            # Asumamos LR estándar o scaling simple?
-            # Por seguridad, usaremos scaling lineal conservador.
+            # Ratio invariante? Asumimos LR lineal conservador.
             adjusted_lr = self.learning_rate / scale
-
-        # Despachar llamadas específicas a solve()
-        # NOTA: PGDSolver.solve ahora toma argumentos explícitos, no kwargs para todo.
-        
-        cov_arg = None
-        mu_arg = None
-        
-        if self.objective_function == 'MINIMIZE_RISK':
-            if isinstance(cov, np.ndarray):
-                cov_arg = cov.tolist()
-            else:
-                cov_arg = cov
-                
-        elif self.objective_function == 'MAXIMIZE_RETURN':
-            if isinstance(mu, np.ndarray):
-                mu_arg = mu.tolist()
-            else:
-                mu_arg = mu
             
-        elif self.objective_function in ['MAXIMIZE_UTILITY', 'MAXIMIZE_RATIO']:
-             if isinstance(cov, np.ndarray): cov_arg = cov.tolist() 
-             else: cov_arg = cov
-             
-             if isinstance(mu, np.ndarray): mu_arg = mu.tolist()
-             else: mu_arg = mu
+        return adjusted_lr, adjusted_gamma
 
+    def compute_mean_and_covariance(self, X):
+        """
+        Calcula la media y la covarianza de los datos. 
+        Si number_type es float64, usamos numpy por velocidad.
+        Si es Posit, usamos la implementación en posit_lib.statistics para pureza.
+        """
+        mu = None
+        cov = None
+        if self.number_type.__name__ in ["FloatWrapper", "Float64Wrapper"]:
+            mu = np.mean(X, axis=0).tolist()
+            cov = np.cov(X, rowvar=False).tolist()
+        else:
+            print(f"Calculando estadísticas con {self.number_type.__name__} (esto puede tardar)...")
+            from posit_lib.statistics import compute_mean, compute_covariance
+            
+            # Calcular media
+            mu = compute_mean(X, self.number_type)
+            
+            # Calcular covarianza
+            cov = compute_covariance(X, mu, self.number_type)
+        return mu, cov
+
+    def fit(self, X, y=None):
+        """
+        Ajusta el modelo usando aritmética Posit o Float.
+        """
+        # 1. Convertir entrada a array numpy si es necesario
+        X = np.array(X)
+        
+        # 2. Lógica de Escalado 
+        scale = self._compute_scaling_factor(X)
+        
+        X_scaled = X * scale
+        
+        n_samples, n_assets = X_scaled.shape
+        
+        # Calcular Mu y Cov
+        mu, cov = self.compute_mean_and_covariance(X_scaled)
+        
+        # Inicializar Solver Genérico con el tipo inyectado
+        solver = PGDSolver(self.number_type)
+        
+        # Ajuste de Parámetros según Escala y Función Objetivo
+        adjusted_lr, adjusted_gamma = self._adjust_solver_params(scale) # TODO: Realmente no sé como de util es
         
         weights_p, iterations = solver.solve(
             objective_type=self.objective_function,
-            cov_matrix=cov_arg,
-            expected_returns=mu_arg,
+            cov_matrix=cov,
+            expected_returns=mu,
             risk_aversion=adjusted_gamma,
             max_iterations=self.max_iterations,
             learning_rate=adjusted_lr,
@@ -260,7 +200,7 @@ class PositMeanVariance:
         ----------
         X : array-like de forma (n_samples, n_assets)
         
-        Retorna
+        Devuelve
         -------
         y_pred : ndarray de forma (n_samples,)
             Retornos del portafolio.
@@ -272,7 +212,7 @@ class PositMeanVariance:
         
     def score(self, X, y=None):
         """
-        Retorna el Ratio de Sharpe del portafolio.
+        Devuelve el Ratio de Sharpe del portafolio.
         """
         returns = self.predict(X)
         return np.mean(returns) / np.std(returns)

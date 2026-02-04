@@ -49,8 +49,8 @@ print(f"   p.exp() = {p.exp()}")
 print(f"   p.log() = {p.log()}")
 print(f"   abs(Posit64(-5.0)) = {posit.Posit64(-5.0).abs()}")
 
-# Test 5: Precision comparison
-print("\n5. Precision Comparison (Posit32 vs Posit64):")
+# Prueba 5: Comparación de precisión
+print("\n5. Comparación de Precisión (Posit32 vs Posit64):")
 val = 1.23456789012345
 p32 = posit.Posit32(val)
 p64 = posit.Posit64(val)
@@ -60,17 +60,17 @@ print(f"   Posit64:        {float(p64)}")
 print(f"   Error32:        {abs(val - float(p32)):.2e}")
 print(f"   Error64:        {abs(val - float(p64)):.2e}")
 
-# Test 6: Chain operations
-print("\n6. Chain Operations:")
+# Prueba 6: Operaciones encadenadas
+print("\n6. Operaciones Encadenadas:")
 result = (posit.Posit32(2.0) * posit.Posit32(3.0) + posit.Posit32(1.0)).sqrt()
 print(f"   ((2 * 3) + 1).sqrt() = {result}")
 print(f"   As float: {float(result)}")
 
-# Test 7: List operations
-print("\n7. List Operations:")
+# Prueba 7: Operaciones de lista
+print("\n7. Operaciones de Lista:")
 weights = [posit.Posit32(w) for w in [0.3, 0.4, 0.3]]
 returns = [posit.Posit32(r) for r in [0.05, 0.08, 0.06]]
-# Use manual sum to avoid Python's sum() starting with int(0)
+# Usar suma manual para evitar que sum() de Python comience con int(0)
 portfolio_return = posit.Posit32(0.0)
 for w, r in zip(weights, returns):
     portfolio_return = portfolio_return + (w * r)
@@ -79,5 +79,5 @@ print(f"   Returns: {[float(r) for r in returns]}")
 print(f"   Portfolio Return: {float(portfolio_return):.6f}")
 
 print("\n" + "=" * 60)
-print("ALL TESTS PASSED! ✓")
+print("¡TODAS LAS PRUEBAS PASARON!")
 print("=" * 60)
