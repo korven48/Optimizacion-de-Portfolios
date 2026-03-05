@@ -15,7 +15,7 @@ import pandas as pd
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) # Probablemente deba hacer otra cosa
 
 from posit_lib.adapters.skfolio_adapter import PositMeanVariance
-from posit_lib.float_wrapper import Float64Wrapper, Float16Wrapper, Float32Wrapper
+from posit_lib.float_wrapper import Float64Wrapper, Float16Wrapper, Float32Wrapper, BFloat16Wrapper
 from posit_lib import posit
 
 from skfolio.optimization import MeanRisk, ObjectiveFunction
@@ -74,10 +74,12 @@ def run_comparison(X, asset_names=None, scaling_strategies=None, number_types=No
     if number_types is None:
         number_types = [
             ("Float16", Float16Wrapper),
+            ("BFloat16", BFloat16Wrapper),
             ("Float32", Float32Wrapper),
             ("Float64", Float64Wrapper),
             ("Posit8", posit.Posit8),
             ("Posit16", posit.Posit16),
+            ("Posit24", posit.Posit24),
             ("Posit32", posit.Posit32),
             ("Posit64", posit.Posit64)
         ]

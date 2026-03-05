@@ -31,25 +31,25 @@ class PGDSolver:
         self.zero = self.number_type(0.0)
         self.one = self.number_type(1.0)
 
-    def _dot_product_kahan(self, v1, v2):
-        """
-        Calcula el producto punto usando Suma de Kahan para minimizar el error numérico.
-        Algoritmo:
-        1. Mantiene una variable 'c' que acumula los errores de redondeo de bajo orden.
-        2. En cada paso, intenta sumar el error acumulado a la entrada actual antes de sumar al total.
-        3. Esto recupera bits de precisión que normalmente se perderían al sumar un número pequeño a uno grande.
-        """
-        sum_val = self.zero
-        c = self.zero # Compensación de error
+    # def _dot_product_kahan(self, v1, v2):
+    #     """
+    #     Calcula el producto punto usando Suma de Kahan para minimizar el error numérico.
+    #     Algoritmo:
+    #     1. Mantiene una variable 'c' que acumula los errores de redondeo de bajo orden.
+    #     2. En cada paso, intenta sumar el error acumulado a la entrada actual antes de sumar al total.
+    #     3. Esto recupera bits de precisión que normalmente se perderían al sumar un número pequeño a uno grande.
+    #     """
+    #     sum_val = self.zero
+    #     c = self.zero # Compensación de error
         
-        for a, b in zip(v1, v2):
-            prod = a * b
-            y = prod - c       # Restar el error de la suma anterior
-            t = sum_val + y    # Suma estándar con la corrección
-            c = (t - sum_val) - y # Calcular el nuevo error de redondeo
-            sum_val = t
+    #     for a, b in zip(v1, v2):
+    #         prod = a * b
+    #         y = prod - c       # Restar el error de la suma anterior
+    #         t = sum_val + y    # Suma estándar con la corrección
+    #         c = (t - sum_val) - y # Calcular el nuevo error de redondeo
+    #         sum_val = t
             
-        return sum_val
+    #     return sum_val
 
     def _dot_product_standard(self, v1, v2):
         """
@@ -66,7 +66,7 @@ class PGDSolver:
         result = []
         for row in matrix:
             # Usar Kahan para mayor precisión en Posit16
-            result.append(self._dot_product_kahan(row, vector))
+            result.append(self._dot_product_standard(row, vector))
         return result
 
     def _projection_simplex(self, weights):

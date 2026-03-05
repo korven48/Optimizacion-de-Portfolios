@@ -35,7 +35,7 @@ def load_real_data(start="2018-01-01", end="2026-01-01", interval="1mo"):
     else:
         data = raw_data
     
-    returns = data.pct_change().dropna()
+    returns = data.pct_change(fill_method=None).dropna()
     X = returns.values
     
     # Limpiar y mapear nombres de tickers
@@ -72,10 +72,15 @@ if __name__ == "__main__":
         
         # Estrategias originales
         strategies = [
-            ('std', 1.0)
+            # ('max', 1.0),
+            # ('std', 1.0),
+            # ('frobenius', 1.0),
+            # ('pow2', 1.0),
+            ('none', 1.0)
         ]
         
-        run_comparison(X, asset_names=assets, scaling_strategies=strategies)
+        
+        # run_comparison(X, asset_names=assets, scaling_strategies=strategies)
 
         # print("========== Tercer test: datos anuales ==========")
         # X, assets = load_real_data(start="2018-01-01", end="2026-01-01", interval="3mo")

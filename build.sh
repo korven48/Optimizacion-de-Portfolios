@@ -18,7 +18,7 @@ cmake --build . --config Release -j$(nproc)
 
 # 4. Install (Copy .so to the python package)
 echo "Installing extension to posit_lib/..."
-cp ../cpp_extension/posit*.so ../posit_lib/posit.so
+mv ../cpp_extension/posit*.so ../posit_lib/posit.so
 
 cd ..
 echo "Build complete! Extension installed as posit_lib.posit"

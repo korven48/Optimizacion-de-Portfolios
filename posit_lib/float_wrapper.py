@@ -95,13 +95,17 @@ class FloatWrapper:
     def abs(self):
         return self._wrap(np.abs(self.value, dtype=self.dtype))
 
+import ml_dtypes
+
 # Definiciones parciales para compatibilidad y uso fácil
 # functools.partial crea un callable que funciona como constructor
 Float16Wrapper = partial(FloatWrapper, dtype=np.float16)
 Float32Wrapper = partial(FloatWrapper, dtype=np.float32)
 Float64Wrapper = partial(FloatWrapper, dtype=np.float64)
+BFloat16Wrapper = partial(FloatWrapper, dtype=ml_dtypes.bfloat16)
 
 # Asignar nombres para que __name__ sea útil (útil para skfolio_adapter)
 Float16Wrapper.__name__ = "Float16Wrapper"
 Float32Wrapper.__name__ = "Float32Wrapper"
 Float64Wrapper.__name__ = "Float64Wrapper"
+BFloat16Wrapper.__name__ = "BFloat16Wrapper"
