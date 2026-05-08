@@ -102,9 +102,13 @@ import ml_dtypes
 Float16Wrapper = partial(FloatWrapper, dtype=np.float16)
 Float32Wrapper = partial(FloatWrapper, dtype=np.float32)
 Float64Wrapper = partial(FloatWrapper, dtype=np.float64)
+Float8_e4m3fn_Wrapper = partial(FloatWrapper, dtype=ml_dtypes.float8_e4m3fn)
+Float8_e5m2_Wrapper = partial(FloatWrapper, dtype=ml_dtypes.float8_e5m2)
 BFloat16Wrapper = partial(FloatWrapper, dtype=ml_dtypes.bfloat16)
 
 # Asignar nombres para que __name__ sea útil (útil para skfolio_adapter)
+Float8_e4m3fn_Wrapper.__name__ = "Float8_e4m3fn_Wrapper"
+Float8_e5m2_Wrapper.__name__ = "Float8_e5m2_Wrapper"
 Float16Wrapper.__name__ = "Float16Wrapper"
 Float32Wrapper.__name__ = "Float32Wrapper"
 Float64Wrapper.__name__ = "Float64Wrapper"

@@ -51,10 +51,29 @@ class PGDSolver:
             
     #     return sum_val
 
+    def _dot_product(self, v1, v2):
+        """
+        Producto punto que usa el quire (acumulación exacta) cuando el tipo
+        numérico es posit, o la acumulación estándar en caso contrario (floats).
+
+        El quire acumula todos los productos sin redondeo intermedio y aplica
+        un único redondeo al final, lo que mejora significativamente la precisión
+        en posits de baja precisión (Posit8, Posit12, Posit16).
+        """
+        if hasattr(self.zero, 'dot_product_quire'):
+            # Tipo posit: usar fused dot product con quire
+            return self.zero.dot_product_quire(v1, v2)
+        # Tipo float: acumulación estándar
+        result = self.zero
+        for a, b in zip(v1, v2):
+            result = result + (a * b)
+        return result
+
     def _dot_product_standard(self, v1, v2):
         """
-        Implementación estándar del producto punto (para referencia/comparación).
+        Implementación estándar del producto punto (sin quire).
         Acumula el error de redondeo si las magnitudes varían mucho.
+        Mantenida para comparación y compatibilidad.
         """
         result = self.zero
         for a, b in zip(v1, v2):
@@ -62,18 +81,19 @@ class PGDSolver:
         return result
 
     def _matrix_vector_product(self, matrix, vector):
-        """Calcula el producto matriz-vector (matrix @ vector) usando Kahan."""
+        """Calcula el producto matriz-vector (matrix @ vector).
+        Usa el quire para tipos posit (acumulación exacta) o la suma estándar para floats."""
         result = []
         for row in matrix:
-            # Usar Kahan para mayor precisión en Posit16
-            result.append(self._dot_product_standard(row, vector))
+            result.append(self._dot_product(row, vector))
         return result
 
-    def _projection_simplex(self, weights):
+    def _projection_simplex(self, weights, target_sum=None):
         """
-        Proyecta los pesos sobre el simplex de probabilidad (sum(w) = 1, w >= 0).
+        Proyecta los pesos sobre el simplex escalado (sum(w) = target_sum, w >= 0).
         Algoritmo: Proyección basada en ordenamiento.
         """
+        target_sum_val = self.one if target_sum is None else target_sum
         n = len(weights)
         
         # 1. Ordenar pesos en orden descendente
@@ -91,10 +111,10 @@ class PGDSolver:
             u = sorted_weights[i]
             tmpsum = tmpsum + u
             
-            # Calcular (tmpsum - 1) / (i + 1)
+            # Calcular (tmpsum - target_sum) / (i + 1)
             # Nota: i es int, necesitamos convertir a number_type
             divisor = self.number_type(float(i + 1))
-            val = u + (self.one - tmpsum) / divisor
+            val = u + (target_sum_val - tmpsum) / divisor
             
             if val > self.zero:
                 rho = i
@@ -106,7 +126,7 @@ class PGDSolver:
             sum_rho = sum_rho + sorted_weights[i]
             
         divisor_rho = self.number_type(float(rho + 1))
-        lambda_val = (self.one - sum_rho) / divisor_rho
+        lambda_val = (target_sum_val - sum_rho) / divisor_rho
         
         # 4. Calcular resultado: w = max(v + lambda, 0)
         result = [self.zero] * n
@@ -191,7 +211,8 @@ class PGDSolver:
               learning_rate=0.1, 
               tolerance=1e-6, 
               momentum=0.9, 
-              callback=None):
+              callback=None,
+              scale_to_golden_zone=False):
         """
         Resuelve el problema de optimización.
         
@@ -213,15 +234,25 @@ class PGDSolver:
         # Pre-procesamiento de datos para el solver
         self._setup_problem_data(cov_matrix, expected_returns, risk_aversion, objective_type)
         
-        # Inicializar pesos (1/N)
-        initial_weight = self.number_type(1.0 / self._n_assets)
+        # Inicializar pesos para que la suma sea 1 o N según scale_to_golden_zone
+        if scale_to_golden_zone:
+            initial_weight = self.one
+            t_sum = self.number_type(float(self._n_assets))
+        else:
+            initial_weight = self.number_type(1.0 / self._n_assets)
+            t_sum = self.one
+            
         w = [initial_weight for _ in range(self._n_assets)]
         
         # Inicializar velocidad para Momentum
         velocity = [self.zero for _ in range(self._n_assets)]
         
         lr = self.number_type(learning_rate)
-        tol = self.number_type(tolerance)
+        if scale_to_golden_zone:
+            tol = self.number_type(tolerance * float(self._n_assets))
+        else:
+            tol = self.number_type(tolerance)
+            
         mu = self.number_type(momentum)
         
         for i in range(max_iterations):
@@ -237,6 +268,9 @@ class PGDSolver:
 
             is_zero_gradient = all(g == self.zero for g in grad)
             if is_zero_gradient:
+                if scale_to_golden_zone:
+                    dev = self.number_type(float(self._n_assets))
+                    w = [val / dev for val in w]
                 return w, i + 1
             
             # Actualización con Momentum
@@ -263,8 +297,8 @@ class PGDSolver:
                 # Actualizar peso
                 w_step.append(w[j] + velocity[j])
             
-            # Proyección al Simplex
-            w_new = self._projection_simplex(w_step)
+            # Proyección al Simplex (usando el t_sum correspondiente)
+            w_new = self._projection_simplex(w_step, target_sum=t_sum)
             
             # Criterio de parada
             diff_sq_sum = self.number_type(0.0)
@@ -273,8 +307,15 @@ class PGDSolver:
                 diff_sq_sum += diff * diff
                 
             if float(diff_sq_sum) < float(tol * tol):
+                if scale_to_golden_zone:
+                    dev = self.number_type(float(self._n_assets))
+                    w_new = [val / dev for val in w_new]
                 return w_new, i + 1
                 
             w = w_new
+            
+        if scale_to_golden_zone:
+            dev = self.number_type(float(self._n_assets))
+            w = [val / dev for val in w]
             
         return w, max_iterations

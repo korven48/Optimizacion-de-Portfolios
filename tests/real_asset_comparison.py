@@ -38,6 +38,9 @@ def load_real_data(start="2018-01-01", end="2026-01-01", interval="1mo"):
     returns = data.pct_change(fill_method=None).dropna()
     X = returns.values
     
+    if len(X) < 2:
+        raise ValueError(f"Fallo en la descarga de datos desde Yahoo Finance. Ocurrió un error de red o algún símbolo no tiene datos, provocando {len(X)} muestras válidas.")
+    
     # Limpiar y mapear nombres de tickers
     sorted_tickers = returns.columns.tolist()
     clean_tickers = []
@@ -65,22 +68,25 @@ if __name__ == "__main__":
             # ('none', 1.0)
         ]
         
-        run_comparison(X, asset_names=assets, scaling_strategies=strategies)
+        run_comparisoln(X, asset_names=assets, scaling_strategies=strategies, scale_to_golden_zone=False)
 
-        print("========== Segundo test: datos diarios ==========")
-        X, assets = load_real_data(start="2018-01-01", end="2026-01-01", interval="1d")
+        # print("========== Primer test: datos mensuales sin escalar a golden zone ==========")
+        # run_comparison(X, asset_names=assets, scaling_strategies=strategies, scale_to_golden_zone=False)
+
+        # print("========== Segundo test: datos diarios ==========")
+        # X, assets = load_real_data(start="2025-01-01", end="2026-01-01", interval="1d")
         
-        # Estrategias originales
-        strategies = [
-            # ('max', 1.0),
-            # ('std', 1.0),
-            # ('frobenius', 1.0),
-            # ('pow2', 1.0),
-            ('none', 1.0)
-        ]
+        # # Estrategias originales
+        # strategies = [
+        #     # ('max', 1.0),
+        #     # ('std', 1.0),
+        #     # ('frobenius', 1.0),
+        #     # ('pow2', 1.0),
+        #     ('none', 1.0)
+        # ]
         
         
-        # run_comparison(X, asset_names=assets, scaling_strategies=strategies)
+        run_comparison(X, asset_names=assets, scaling_strategies=strategies, scale_to_golden_zone=False)
 
         # print("========== Tercer test: datos anuales ==========")
         # X, assets = load_real_data(start="2018-01-01", end="2026-01-01", interval="3mo")
@@ -90,6 +96,6 @@ if __name__ == "__main__":
         #     ('std', 1.0)
         # ]
         
-        # run_comparison(X, asset_names=assets, scaling_strategies=strategies)
+        # run_comparison(X, asset_names=assets, scaling_strategies=strategies, scale_to_golden_zone=True)
     except Exception as e:
         print(f"Error fatal: {e}")

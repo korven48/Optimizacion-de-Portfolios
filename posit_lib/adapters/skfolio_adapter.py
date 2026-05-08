@@ -28,7 +28,8 @@ class PositMeanVariance:
                  max_iterations=10000,
                  tolerance=1e-6,
                  momentum=0.9,
-                 learning_rate=0.1):
+                 learning_rate=0.1,
+                 scale_to_golden_zone=False):
         """
         Args:
             risk_aversion: Parámetro de aversión al riesgo (gamma).
@@ -52,6 +53,7 @@ class PositMeanVariance:
         self.tolerance = tolerance
         self.momentum = momentum
         self.learning_rate = learning_rate
+        self.scale_to_golden_zone = scale_to_golden_zone
         
         self.weights_ = None
         self._solver = None
@@ -140,7 +142,6 @@ class PositMeanVariance:
             mu = np.mean(X, axis=0).tolist()
             cov = np.cov(X, rowvar=False).tolist()
         else:
-            print(f"Calculando estadísticas con {self.number_type.__name__} (esto puede tardar)...")
             from posit_lib.statistics import compute_mean, compute_covariance
             
             # Calcular media
@@ -182,7 +183,8 @@ class PositMeanVariance:
             learning_rate=adjusted_lr,
             tolerance=self.tolerance,
             momentum=self.momentum,
-            callback=getattr(self, 'monitor_callback', None)
+            callback=getattr(self, 'monitor_callback', None),
+            scale_to_golden_zone=self.scale_to_golden_zone
         )
         
         # 4. Almacenar resultados (convertir de nuevo a float para compatibilidad)

@@ -12,9 +12,11 @@ find_package(pybind11 REQUIRED)
 
 # Universal library path
 set(UNIVERSAL_DIR "/usr/local/include" CACHE PATH "Path to universal library")
+set(UNIVERSAL_LOCAL_DIR "/home/lucas/Desktop/universal/include" CACHE PATH "Path to local universal library")
 
 # Include directories
 include_directories(${UNIVERSAL_DIR})
+include_directories(${UNIVERSAL_LOCAL_DIR})
 
 # Create Python module
 pybind11_add_module(posit src/posit_wrapper.cpp)
