@@ -62,12 +62,116 @@ Este script:
 
 ### 4. Ejecutar Tests y Comparaciones
 
-#### Test de Comparación con Matrices Mal Condicionadas
+El directorio `tests/` contiene varios scripts para evaluar y comparar la precision numerica de distintos formatos aritmeticos en la optimizacion de portafolios.
 
-El script `tests/ill_conditioned_comparison.py` genera datos sintéticos diseñados para estresar la estabilidad numérica y compara el rendimiento de diferentes tipos numéricos (Float16, Float32, Posit16, Posit32, etc.).
+#### 4.1 Motor de Comparacion (`tests/custom_comparison.py`)
 
-Para ejecutarlo:
+Este es el modulo central que ejecuta las comparaciones. Proporciona la funcion `run_comparison()` que:
+
+1.  Optimiza un portafolio con **Skfolio** (Float64, referencia).
+2.  Repite la optimizacion con el solver propio usando cada combinacion de tipo numerico y estrategia de escalado.
+3.  Calcula metricas de calidad: Error L2, brecha de riesgo, suma de pesos, negatividad, etc.
+
+**Uso directo** (con datos sinteticos de ejemplo):
+
+```bash
+python3 tests/custom_comparison.py
+```
+
+**Uso programatico** (importando la funcion):
+
+```python
+from tests.custom_comparison import run_comparison
+
+df = run_comparison(
+    X,                                # Matriz de retornos (n_samples x n_assets)
+    asset_names=["Activo1", ...],     # Nombres de activos (opcional)
+    scaling_strategies=[('std', 1.0)],# Estrategias de escalado
+    number_types=None,                # None = todos los tipos disponibles
+    solver_params={'tolerance': 1e-6},# Parametros del solver
+    scale_to_golden_zone=False,       # Escalar a zona dorada Posit
+    export_csv="resultados.csv",      # Exportar a CSV (opcional)
+    print_console=True                # Mostrar resultados por consola
+)
+```
+
+**Tipos numericos soportados:**
+
+| Familia IEEE 754       | Familia Posit            |
+|------------------------|--------------------------|
+| Float8_e4m3fn          | Posit8                   |
+| Float8_e5m2            | Posit12                  |
+| Float16                | Posit16                  |
+| BFloat16               | Posit20                  |
+| Float32                | Posit24                  |
+| Float64                | Posit32                  |
+|                        | Posit64                  |
+
+**Estrategias de escalado disponibles:** `none`, `manual`, `max`, `std`, `frobenius`, `pow2`.
+
+---
+
+#### 4.2 Comparacion con Activos Reales (`tests/real_asset_comparison.py`)
+
+Descarga datos historicos de Yahoo Finance para un portafolio diversificado de 10 activos reales y ejecuta la comparacion.
+
+**Activos incluidos:** Oro (GLD), Bitcoin (BTC-USD), S&P 500 (SPY), Nasdaq (QQQ), Bonos Tesoro (TLT), Inmobiliario (VNQ), Mercados Emergentes (EEM), Petroleo (USO), Bonos Corporativos (LQD), Dolar (UUP).
+
+```bash
+python3 tests/real_asset_comparison.py
+```
+
+> **Nota:** Requiere conexion a internet para descargar datos via `yfinance`. Los datos por defecto abarcan de 2018-01-01 a 2026-01-01 con frecuencia mensual.
+
+---
+
+#### 4.3 Comparacion con Matrices Mal Condicionadas (`tests/ill_conditioned_comparison.py`)
+
+Genera datos sinteticos disenados para estresar la estabilidad numerica (matrices con alta correlacion y numeros diminutos) y compara el rendimiento de los distintos tipos numericos.
 
 ```bash
 python3 tests/ill_conditioned_comparison.py
 ```
+
+---
+
+#### 4.4 Grid Search Completo (`tests/grid_search.py`)
+
+Ejecuta una busqueda exhaustiva de hiperparametros, combinando:
+
+*   **4 datasets:** Alta correlacion sintetica, numeros diminutos, datos reales mensuales y datos reales diarios.
+*   **6 tolerancias:** `1e-3`, `1e-4`, `1e-5`, `1e-6`, `1e-7`, `1e-8`.
+*   **6 estrategias de escalado:** `none`, `manual(100)`, `max`, `std`, `frobenius`, `pow2`.
+*   **2 opciones de Golden Zone:** `True` / `False`.
+*   **13 tipos numericos:** 6 IEEE 754 + 7 Posit.
+
+```bash
+python3 tests/grid_search.py
+```
+
+Los resultados se guardan en `tests/full_grid_search_resultados.csv`.
+
+---
+
+#### 4.5 Resultados del Grid Search (`tests/full_grid_search_resultados.csv`)
+
+Archivo CSV con los resultados completos del grid search (~3400 filas). Columnas:
+
+| Columna                | Descripcion                                                     |
+|------------------------|-----------------------------------------------------------------|
+| `Dataset`              | Nombre del dataset utilizado                                    |
+| `Tolerance`            | Tolerancia de convergencia del solver                           |
+| `Golden_Zone`          | Si se escalo a la zona dorada del formato Posit                 |
+| `Scaling_Strategy`     | Estrategia de escalado aplicada                                 |
+| `Scaling_Factor`       | Factor multiplicativo de la estrategia                          |
+| `Number_Type`          | Tipo numerico utilizado (ej. `Posit16`, `Float32`)              |
+| `Time_s`               | Tiempo de ejecucion en segundos                                 |
+| `Iterations`           | Numero de iteraciones del solver                                |
+| `Error_L2`             | Norma L2 de la diferencia de pesos vs. Skfolio                  |
+| `Risk_Variance`        | Varianza del portafolio resultante (w^T * Cov * w)              |
+| `Sum_Weights`          | Suma de los pesos (debe ser ~1.0)                               |
+| `Negativity_Violation` | Suma de violaciones de no-negatividad                           |
+| `Max_Abs_Diff`         | Diferencia absoluta maxima de un peso vs. Skfolio               |
+| `Risk_Gap_Pct`         | Brecha porcentual de riesgo respecto a Skfolio                  |
+| `Grad_Zero_Detected`   | Si el gradiente colapso a cero (underflow)                      |
+| `Weights_Array`        | Vector de pesos del portafolio resultante                       |
