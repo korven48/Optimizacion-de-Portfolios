@@ -202,7 +202,7 @@ def run_comparison(X, asset_names=None, scaling_strategies=None, number_types=No
     Retorna un pandas.DataFrame con todas las métricas.
     """
     
-    # 1. Configuración de valores por defecto
+    # Configuración de valores por defecto
     X = np.array(X)
     n_samples, n_assets = X.shape
 
@@ -249,7 +249,7 @@ def run_comparison(X, asset_names=None, scaling_strategies=None, number_types=No
     # Matriz Covarianza Base
     cov = np.cov(X, rowvar=False)
 
-    # 2. Ejecutar Base Skfolio
+    # Ejecutar Base Skfolio
     start = time.time()
     try:
         model_sk = MeanRisk(risk_aversion=1.0, objective_function=ObjectiveFunction.MINIMIZE_RISK) 
@@ -283,7 +283,7 @@ def run_comparison(X, asset_names=None, scaling_strategies=None, number_types=No
         'Weights_Array': weights_sk.tolist()
     })
 
-    # 3. Ejecutar Estrategias Ad Hoc
+    # Ejecutar Estrategias Ad Hoc
     for scale_type, scale_factor in scaling_strategies:
         for name, number_type in number_types:
             start = time.time()
@@ -375,8 +375,7 @@ def run_comparison(X, asset_names=None, scaling_strategies=None, number_types=No
 
 
 if __name__ == "__main__":
-    print("Ejecutando Comparación Personalizada con Datos Sintéticos...")
-    
+    # Ejemplo de uso    
     np.random.seed(42)
     n_samples, n_assets = 100, 5
     X_dummy = np.random.randn(n_samples, n_assets) * 0.01 + 0.0005
@@ -387,7 +386,5 @@ if __name__ == "__main__":
         ('manual', 1000.0)
     ]
     
-    # Ejecutar comparación retornando datos e imprimiendo por defecto
-    df = run_comparison(X_dummy, asset_names=asset_ids, scaling_strategies=custom_scaling, solver_params={"objective_function": "MINIMIZE_RISK"})
-    # print("\nDatos extraídos:")
-    # print(df.head())
+    df = run_comparison(X_dummy, asset_names=asset_ids, scaling_strategies=custom_scaling, solver_params={"objective_function": "MINIMIZE_RISK"}, print_console=True)
+

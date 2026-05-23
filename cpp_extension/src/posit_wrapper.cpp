@@ -113,7 +113,7 @@ public:
         return PositWrapper(sw::universal::pow(value, exp.value));
     }
 
-    // Fused dot product usando el quire: acumulación exacta sin redondeo intermedio.
+    // Producto escalar usando el quire
     // Capacity=20 soporta vectores de hasta 2^20 = 1M elementos sin overflow.
     PositWrapper dot_product_quire(const std::vector<PositWrapper>& v1,
                                    const std::vector<PositWrapper>& v2) const {

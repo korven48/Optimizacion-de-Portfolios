@@ -6,7 +6,7 @@ def compute_mean(X, number_type):
     
     Args:
         X: Array-like de forma (n_samples, n_features).
-        number_type: Clase numérica a usar (ej. Posit64, FloatWrapper).
+        number_type: Clase numérica en la que trabajar
         
     Returns:
         Lista de objetos number_type con las medias.
@@ -26,7 +26,7 @@ def compute_mean(X, number_type):
         for val in col:
             sum_val += number_type(float(val))
             
-        mean_val = sum_val / n_samples_p
+        mean_val = sum_val / n_samples_p 
         means.append(mean_val)
         
     return means
@@ -52,15 +52,9 @@ def compute_covariance(X, mu, number_type):
     # Factor de normalización 1/(N-1)
     norm_factor = number_type(1.0) / number_type(n_samples - 1)
     
-    # Pre-convertir X a number_type para evitar conversiones repetidas en el bucle interno?
-    # Sería mucha memoria si X es grande. Mejor convertir al vuelo o por columnas.
-    # Vamos a hacerlo elemento a elemento para ser estrictos con la aritmética, 
-    # aunque sea lento.
-    
     cov_matrix = [[number_type(0.0) for _ in range(n_features)] for _ in range(n_features)]
     
     # Centrar datos primero (X - mu)
-    # Esto requiere almacenar X_centered en memoria como objetos Posit.
     X_centered = []
     for i in range(n_samples):
         row = []
@@ -76,7 +70,6 @@ def compute_covariance(X, mu, number_type):
         for k in range(j, n_features):
             sum_prod = number_type(0.0)
             for i in range(n_samples):
-                # sum += X_centered[i][j] * X_centered[i][k]
                 prod = X_centered[i][j] * X_centered[i][k]
                 sum_prod += prod
             

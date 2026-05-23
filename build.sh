@@ -1,22 +1,21 @@
 #!/bin/bash
 
-# Build script for Posit Library
+# Script de compilación para la biblioteca Posit
 
-# 1. Clean previous builds
+# Limpiar compilaciones anteriores
 rm -rf build
 mkdir -p build
 cd build
 
-# 2. Configure CMake
-# We point to the cpp_extension directory
+# Configurar CMake
 cmake ../cpp_extension \
     -DPython3_EXECUTABLE=$(which python3) \
     -DCMAKE_BUILD_TYPE=Release
 
-# 3. Build
+# Compilar
 cmake --build . --config Release -j$(nproc)
 
-# 4. Install (Copy .so to the python package)
+# Instalar
 echo "Installing extension to posit_lib/..."
 mv ../cpp_extension/posit*.so ../posit_lib/posit.so
 

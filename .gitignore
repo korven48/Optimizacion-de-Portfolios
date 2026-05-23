@@ -15,11 +15,8 @@ build/
 
 # IDE
 .vscode/
-.idea/
 
-# Project specific
 posit_lib/posit.so
-
 
 # Latex
 build/

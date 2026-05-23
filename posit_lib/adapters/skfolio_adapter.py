@@ -86,7 +86,6 @@ class PositMeanVariance:
             
         elif self.scaling_type == 'pow2':
             # Potencia de 2 más cercana a 1/mean(vals)
-            # Útil para escalar binariamente sin perder precisión en mantisa (excepto exponente)
             avg = np.mean(vals)
             if avg > 0:
                 target = 1.0 / avg
@@ -155,24 +154,17 @@ class PositMeanVariance:
         """
         Ajusta el modelo usando aritmética Posit o Float.
         """
-        # 1. Convertir entrada a array numpy si es necesario
         X = np.array(X)
-        
-        # 2. Lógica de Escalado 
         scale = self._compute_scaling_factor(X)
-        
         X_scaled = X * scale
-        
         n_samples, n_assets = X_scaled.shape
-        
-        # Calcular Mu y Cov
         mu, cov = self.compute_mean_and_covariance(X_scaled)
         
         # Inicializar Solver Genérico con el tipo inyectado
         solver = PGDSolver(self.number_type)
         
         # Ajuste de Parámetros según Escala y Función Objetivo
-        adjusted_lr, adjusted_gamma = self._adjust_solver_params(scale) # TODO: Realmente no sé como de util es
+        adjusted_lr, adjusted_gamma = self._adjust_solver_params(scale)
         
         weights_p, iterations = solver.solve(
             objective_type=self.objective_function,
@@ -197,19 +189,9 @@ class PositMeanVariance:
     def predict(self, X):
         """
         Predice el retorno del portafolio para los datos dados.
-        
-        Parámetros
-        ----------
-        X : array-like de forma (n_samples, n_assets)
-        
-        Devuelve
-        -------
-        y_pred : ndarray de forma (n_samples,)
-            Retornos del portafolio.
         """
         if self.weights_ is None:
-            raise ValueError("Modelo no ajustado aún. Llame a 'fit' primero.")
-            
+            raise ValueError("El modelo no está ajustado.")
         return np.dot(X, self.weights_)
         
     def score(self, X, y=None):
@@ -218,22 +200,3 @@ class PositMeanVariance:
         """
         returns = self.predict(X)
         return np.mean(returns) / np.std(returns)
-
-# Ejemplo de Uso si se ejecuta directamente
-if __name__ == "__main__":
-    print("Prueba del Adaptador PositMeanVariance")
-    print("-" * 30)
-    
-    # Datos Sintéticos (100 días, 4 activos)
-    np.random.seed(42)
-    returns = np.random.randn(100, 4) * 0.01 + 0.0005
-    
-    # Inicializar Modelo
-    model = PositMeanVariance(risk_aversion=1.0)
-    
-    # Ajustar
-    print("Ajustando modelo...")
-    model.fit(returns)
-    
-    print("Pesos Óptimos:", model.weights_)
-    print("Suma de pesos:", np.sum(model.weights_))

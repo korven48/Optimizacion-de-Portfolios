@@ -5,7 +5,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 
-# Añadir directorio padre al path para encontrar posit_lib y ejemplos
+# Añadir directorio padre al path para encontrar posit_lib
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests.custom_comparison import run_comparison
@@ -58,44 +58,31 @@ if __name__ == "__main__":
     try:
         print("========== Primer test: datos mensuales ==========")
         X, assets = load_real_data()
-        
-        # Estrategias originales
         strategies = [
-            # ('max', 1.0),
-            ('std', 1.0)
-            # ('frobenius', 1.0),
-            # ('pow2', 1.0),
-            # ('none', 1.0)
+            ('max', 1.0),
+            ('std', 1.0),
+            ('frobenius', 1.0),
+            ('pow2', 1.0),
+            ('none', 1.0)
         ]
-        
-        run_comparisoln(X, asset_names=assets, scaling_strategies=strategies, scale_to_golden_zone=False)
-
-        # print("========== Primer test: datos mensuales sin escalar a golden zone ==========")
-        # run_comparison(X, asset_names=assets, scaling_strategies=strategies, scale_to_golden_zone=False)
-
-        # print("========== Segundo test: datos diarios ==========")
-        # X, assets = load_real_data(start="2025-01-01", end="2026-01-01", interval="1d")
-        
-        # # Estrategias originales
-        # strategies = [
-        #     # ('max', 1.0),
-        #     # ('std', 1.0),
-        #     # ('frobenius', 1.0),
-        #     # ('pow2', 1.0),
-        #     ('none', 1.0)
-        # ]
-        
-        
         run_comparison(X, asset_names=assets, scaling_strategies=strategies, scale_to_golden_zone=False)
 
-        # print("========== Tercer test: datos anuales ==========")
-        # X, assets = load_real_data(start="2018-01-01", end="2026-01-01", interval="3mo")
-        
-        # # Estrategias originales
-        # strategies = [
-        #     ('std', 1.0)
-        # ]
-        
-        # run_comparison(X, asset_names=assets, scaling_strategies=strategies, scale_to_golden_zone=True)
+        print("========== Segundo test: datos diarios ==========")
+        X, assets = load_real_data(start="2025-01-01", end="2026-01-01", interval="1d")
+        strategies = [
+            ('max', 1.0),
+            ('std', 1.0),
+            ('frobenius', 1.0),
+            ('pow2', 1.0),
+            ('none', 1.0)
+        ]
+        run_comparison(X, asset_names=assets, scaling_strategies=strategies, scale_to_golden_zone=False)
+
+        print("========== Tercer test: datos trimestrales ==========")
+        X, assets = load_real_data(start="2018-01-01", end="2026-01-01", interval="3mo")
+        strategies = [
+            ('std', 1.0)
+        ]
+        run_comparison(X, asset_names=assets, scaling_strategies=strategies, scale_to_golden_zone=True)
     except Exception as e:
         print(f"Error fatal: {e}")
